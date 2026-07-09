@@ -6,6 +6,8 @@ import { PrismaClient } from '@prisma/client';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import 'dotenv/config';
+import transactionsRouter from './src/routes/transactions.routes.js';
+import { startRecurringTransactionsJob } from './src/jobs/recurringTransactions.job.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -17,7 +19,7 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL
 });
 const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+export const prisma = new PrismaClient({ adapter });
 
 // Middleware JWT (exportable/disponible)
 export const verifyJWT = (req, resp, next) => {
@@ -114,7 +116,8 @@ app.post('/api/auth/recover', async (req, resp) => {
 // ==========================================
 // Rutas de Integrante 2: Transacciones
 // ==========================================
-// TODO: Implementar rutas de transacciones aquí
+// RF-06, RF-07, RF-09, RF-10 — implemented in src/routes/transactions.routes.js
+app.use('/api/transactions', transactionsRouter);
 
 
 // ==========================================
@@ -280,6 +283,9 @@ app.get("/api/family/analytics", verifyJWT, async (req, resp) => {
 // TODO: Implementar rutas adicionales aquí
 
 
+
+// RF-09 — start the daily job that generates transactions from recurring templates.
+startRecurringTransactionsJob();
 
 app.listen(PORT, () => {
   console.log(`Servidor iniciado en el puerto ${PORT}`);

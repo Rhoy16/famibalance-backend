@@ -45,19 +45,25 @@ model Budget {
 }
 
 model Transaction {
-  id            String   @id @default(uuid())
+  id            String    @id @default(uuid())
   description   String
   amount        Float
-  currency      String   @default("PEN")
-  exchangeRate  Float    @default(1.0)
+  currency      String    @default("PEN")
+  exchangeRate  Float     @default(1.0)
+  baseAmount    Float?
   date          DateTime
   type          String
   paymentMethod String
   userId        String
-  user          User     @relation(fields: [userId], references: [id])
+  user          User      @relation(fields: [userId], references: [id])
   categoryId    String
-  category      Category @relation(fields: [categoryId], references: [id])
-  isRecurring   Boolean
+  category      Category  @relation(fields: [categoryId], references: [id])
+  isRecurring   Boolean   @default(false)
+  frequency         String?
+  nextRunDate       DateTime?
+  parentRecurringId String?
+
+  @@index([isRecurring, nextRunDate])
 }
 
 model SavingGoal {
