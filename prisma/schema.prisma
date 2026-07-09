@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String        @id @default(uuid())
+  name         String
+  email        String        @unique
+  password     String
+  role         String        @default("MEMBER")
+  familyId     String?
+  familyGroup  FamilyGroup?  @relation(fields: [familyId], references: [id])
+  transactions Transaction[]
+  savingGoals  SavingGoal[]
+  categories   Category[]
+}
+
+model FamilyGroup {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  users     User[]
+}
+
+model Category {
+  id           String        @id @default(uuid())
+  name         String
+  isCustom     Boolean
+  userId       String?
+  user         User?         @relation(fields: [userId], references: [id])
+  budgets      Budget[]
+  transactions Transaction[]
+}
+
+model Budget {
+  id          String   @id @default(uuid())
+  limitAmount Float
+  month       String
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+}
+
+model Transaction {
+  id            String   @id @default(uuid())
+  description   String
+  amount        Float
+  currency      String   @default("PEN")
+  exchangeRate  Float    @default(1.0)
+  date          DateTime
+  type          String
+  paymentMethod String
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  categoryId    String
+  category      Category @relation(fields: [categoryId], references: [id])
+  isRecurring   Boolean
+}
+
+model SavingGoal {
+  id           String   @id @default(uuid())
+  title        String
+  targetAmount Float
+  savedAmount  Float
+  deadline     DateTime
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+}
