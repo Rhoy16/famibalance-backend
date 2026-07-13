@@ -1,4 +1,4 @@
-// src/routes/transactions.routes.js
+// src/routes/transaction.routes.js
 //
 // Owner: Integrante 2
 // Covers:
@@ -8,14 +8,15 @@
 //           generation job lives in src/jobs/recurringTransactions.job.js)
 //   RF-10 — Multi-currency support
 //
-// Mounted in index.js as: app.use('/api/transactions', transactionsRouter)
+// Mounted in index.js as: app.use('/api/transactions', transactionRouter)
 
 import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import { prisma, verifyJWT } from '../../index.js';
+import { prisma } from '../../index.js';
+import { verifyJWT } from '../middlewares/auth.middleware.js';
 import { convertToBaseCurrency } from '../services/currencyConversion.service.js';
 import { extractReceiptData } from '../services/receiptExtraction.service.js';
 
@@ -40,7 +41,9 @@ const upload = multer({
 });
 
 // Every route in this file requires a valid JWT.
-router.use(verifyJWT);
+router.use((req, resp, next) => {
+  verifyJWT(req, resp, next);
+});
 
 // ------------------------------------------------------------------
 // Stand-in for Integrante 3's budget-alert logic (RF-11/RF-12).
