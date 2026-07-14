@@ -85,7 +85,7 @@ async function checkBudgetAlert({ categoryId, date }) {
 // ------------------------------------------------------------------
 router.get('/', async (req, resp) => {
   try {
-    const { scope } = req.query;
+    const { scope, startDate, endDate, type, categoryId, category, paymentMethod, userId } = req.query;
     let where = { userId: req.user.id };
 
     if (scope === 'family') {
@@ -100,6 +100,30 @@ router.get('/', async (req, resp) => {
         select: { id: true },
       });
       where = { userId: { in: familyMembers.map((u) => u.id) } };
+    }
+
+    if (userId) {
+      if (scope !== 'family' || req.user.role !== 'JEFE') {
+        return resp.status(403).json({ msg: 'Only the JEFE can filter by user', data: null });
+      }
+      where.userId = userId;
+      where.user = {
+        familyId: req.user.familyId
+      };
+    }
+
+    if (startDate || endDate) {
+      where.date = {};
+      if (startDate) where.date.gte = new Date(startDate);
+      if (endDate) where.date.lte = new Date(endDate);
+    }
+    if (type) where.type = type;
+    if (categoryId) where.categoryId = categoryId;
+    if (paymentMethod) where.paymentMethod = paymentMethod;
+    if (category) {
+      where.category = {
+        name: category
+      };
     }
 
     const transactions = await prisma.transaction.findMany({

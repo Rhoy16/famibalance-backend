@@ -32,12 +32,12 @@ router.get('/', async (req, resp) => {
 
 router.post('/', async (req, resp) => {
   try {
-    const { title, targetAmount, deadline } = req.body;
+    const { title, targetAmount, savedAmount, deadline } = req.body;
     const newGoal = await prisma.savingGoal.create({
       data: {
         title,
         targetAmount,
-        savedAmount: 0.0,
+        savedAmount: savedAmount || 0.0,
         deadline: new Date(deadline),
         userId: req.user.id
       }
@@ -49,6 +49,48 @@ router.post('/', async (req, resp) => {
   } catch (error) {
     resp.status(400).json({
       msg: "Error al crear meta de ahorro",
+      data: error.message
+    });
+  }
+});
+
+router.put('/:id', async (req, resp) => {
+  try {
+    const { id } = req.params;
+    const { title, targetAmount, savedAmount, deadline } = req.body;
+
+    const goal = await prisma.savingGoal.findUnique({
+      where: {
+        id
+      }
+    });
+
+    if (!goal || goal.userId !== req.user.id) {
+      return resp.status(404).json({
+        msg: "Meta de ahorro no encontrada",
+        data: null
+      });
+    }
+
+    const updatedGoal = await prisma.savingGoal.update({
+      where: {
+        id
+      },
+      data: {
+        title,
+        targetAmount,
+        savedAmount,
+        deadline: deadline ? new Date(deadline) : undefined
+      }
+    });
+
+    resp.json({
+      msg: "Meta de ahorro actualizada",
+      data: updatedGoal
+    });
+  } catch (error) {
+    resp.status(400).json({
+      msg: "Error al actualizar meta de ahorro",
       data: error.message
     });
   }

@@ -14,6 +14,7 @@ import transactionRouter from './src/routes/transaction.routes.js';
 import { budgetRouter, categoryRouter } from './src/routes/budget.routes.js';
 import { familyRouter, dashboardRouter } from './src/routes/family.routes.js';
 import goalRouter from './src/routes/goal.routes.js';
+import reportRouter from './src/routes/report.routes.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -49,6 +50,7 @@ app.use('/api/categories', categoryRouter);
 app.use('/api/family', familyRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/goals', goalRouter);
+app.use('/api/reports', reportRouter);
 
 // Start recurring transactions job
 startRecurringTransactionsJob();
