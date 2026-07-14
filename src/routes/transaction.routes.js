@@ -23,10 +23,10 @@ import { extractReceiptData } from '../services/receiptExtraction.service.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const router = Router();
 
-// NOTE on `type`: the rest of the team (dashboard/analytics, Integrante 4)
-// already filters transactions using the Spanish literals "INGRESO" and
-// "EGRESO". We keep those exact values here for compatibility instead of
-// switching to "INCOME"/"EXPENSE" — changing them would silently break
+// NOTE on `type`: the dashboard/analytics endpoints (Integrante 4) already
+// filter transactions using the Spanish literals "INGRESO" and "EGRESO".
+// We keep those exact values here for compatibility instead of switching
+// to "INCOME"/"EXPENSE" — changing them would silently break
 // GET /api/dashboard/personal and /api/family/analytics.
 const VALID_TYPES = ['INGRESO', 'EGRESO'];
 const VALID_FREQUENCIES = ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'];
@@ -41,27 +41,27 @@ const upload = multer({
 });
 
 // Every route in this file requires a valid JWT.
-router.use((req, resp, next) => {
-  verifyJWT(req, resp, next);
-});
+router.use(verifyJWT);
 
 // ------------------------------------------------------------------
-// Stand-in for Integrante 3's budget-alert logic (RF-11/RF-12).
-// Once they deliver their own function, replace this call with theirs;
-// the shape { alertTriggered, level } is what the response expects.
+// Budget-alert check (RF-11/RF-12 support).
+// Integrante 3 owns the real budget logic in budget.routes.js, but their
+// checkBudgetAlert() isn't exported yet and isn't scoped by month there
+// either — so this stays local for now, using the SAME response shape
+// ({ alertTrigger, mensaje }) they use, so the frontend only has to
+// handle one format. Swap this out once their function is exported.
 // ------------------------------------------------------------------
-async function checkBudgetAlert({ userId, categoryId, date }) {
+async function checkBudgetAlert({ categoryId, date }) {
   const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 
   const budget = await prisma.budget.findFirst({ where: { categoryId, month } });
-  if (!budget) return { alertTriggered: false };
+  if (!budget) return { alertTrigger: false };
 
   const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
   const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 1);
 
   const spentAgg = await prisma.transaction.aggregate({
     where: {
-      userId,
       categoryId,
       type: 'EGRESO',
       date: { gte: startOfMonth, lt: endOfMonth },
@@ -70,21 +70,18 @@ async function checkBudgetAlert({ userId, categoryId, date }) {
   });
 
   const spent = spentAgg._sum.amount || 0;
-  const ratio = spent / budget.limitAmount;
+  const percentage = (spent / budget.limitAmount) * 100;
 
-  return {
-    alertTriggered: ratio >= 0.8,
-    level: ratio >= 1 ? 'EXCEEDED' : ratio >= 0.8 ? 'WARNING' : 'OK',
-    spent,
-    limit: budget.limitAmount,
-  };
+  if (percentage >= 100) return { alertTrigger: true, mensaje: 'Presupuesto agotado' };
+  if (percentage >= 80) return { alertTrigger: true, mensaje: 'Ya alcanzó el 80% del presupuesto' };
+  return { alertTrigger: false };
 }
 
 // ------------------------------------------------------------------
 // GET /api/transactions
-// Own transactions by default; ?scope=family lets the JEFE see the
-// whole family's transactions (Integrante 5 adds richer filters on top
-// for RF-16).
+// Scope comes straight from the JWT: own transactions by default;
+// ?scope=family lets the JEFE see the whole family's transactions
+// (Integrante 5 adds richer filters on top for RF-16).
 // ------------------------------------------------------------------
 router.get('/', async (req, resp) => {
   try {
@@ -92,12 +89,14 @@ router.get('/', async (req, resp) => {
     let where = { userId: req.user.id };
 
     if (scope === 'family') {
-      const requester = await prisma.user.findUnique({ where: { id: req.user.id } });
-      if (requester.role !== 'JEFE') {
+      if (req.user.role !== 'JEFE') {
         return resp.status(403).json({ msg: 'Only the JEFE can view family-wide transactions', data: null });
       }
+      if (!req.user.familyId) {
+        return resp.status(400).json({ msg: 'You are not part of a family group', data: null });
+      }
       const familyMembers = await prisma.user.findMany({
-        where: { familyId: requester.familyId },
+        where: { familyId: req.user.familyId },
         select: { id: true },
       });
       where = { userId: { in: familyMembers.map((u) => u.id) } };
@@ -152,8 +151,8 @@ router.post('/', async (req, resp) => {
     });
 
     const alertInfo = type === 'EGRESO'
-      ? await checkBudgetAlert({ userId: req.user.id, categoryId, date: txDate })
-      : { alertTriggered: false };
+      ? await checkBudgetAlert({ categoryId, date: txDate })
+      : { alertTrigger: false };
 
     resp.status(201).json({ msg: 'Transaction created', data: { transaction, ...alertInfo } });
   } catch (error) {
