@@ -19,7 +19,7 @@ router.get('/', async (req, resp) => {
       }
     });
     resp.json({
-      msg: "Lista de metas de ahorro (Cascarón)",
+      msg: "Lista de metas de ahorro",
       data: goals
     });
   } catch (error) {
@@ -43,7 +43,7 @@ router.post('/', async (req, resp) => {
       }
     });
     resp.json({
-      msg: "Meta de ahorro creada (Cascarón)",
+      msg: "Meta de ahorro creada",
       data: newGoal
     });
   } catch (error) {
@@ -91,6 +91,41 @@ router.put('/:id', async (req, resp) => {
   } catch (error) {
     resp.status(400).json({
       msg: "Error al actualizar meta de ahorro",
+      data: error.message
+    });
+  }
+});
+
+router.delete('/:id', async (req, resp) => {
+  try {
+    const { id } = req.params;
+
+    const goal = await prisma.savingGoal.findUnique({
+      where: {
+        id
+      }
+    });
+
+    if (!goal || goal.userId !== req.user.id) {
+      return resp.status(404).json({
+        msg: "Meta de ahorro no encontrada o sin acceso",
+        data: null
+      });
+    }
+
+    await prisma.savingGoal.delete({
+      where: {
+        id
+      }
+    });
+
+    resp.json({
+      msg: "Meta de ahorro eliminada correctamente",
+      data: null
+    });
+  } catch (error) {
+    resp.status(400).json({
+      msg: "Error al eliminar meta de ahorro",
       data: error.message
     });
   }

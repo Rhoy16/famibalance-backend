@@ -1,0 +1,87 @@
+@startuml FamiBalance ERD
+
+skinparam linetype orto
+skinparam roundcorner 5
+skinparam class {
+  BackgroundColor White
+  BorderColor Black
+  ArrowColor Black
+}
+
+entity "FamilyGroup" as FamilyGroup {
+  * id : String [PK]
+  --
+  * name : String
+  * createdAt : DateTime
+  --
+}
+
+entity "User" as User {
+  * id : String [PK]
+  --
+  * name : String
+  * email : String [unique]
+  * password : String
+  * role : String
+  --
+  familyId : String [FK]
+}
+
+entity "Category" as Category {
+  * id : String [PK]
+  --
+  * name : String
+  * isCustom : Boolean
+  --
+  userId : String [FK]
+}
+
+entity "Budget" as Budget {
+  * id : String [PK]
+  --
+  * limitAmount : Float
+  * month : String
+  --
+  * categoryId : String [FK]
+}
+
+entity "Transaction" as Transaction {
+  * id : String [PK]
+  --
+  * description : String
+  * amount : Float
+  * currency : String
+  * exchangeRate : Float
+  baseAmount : Float
+  * date : DateTime
+  * type : String
+  * paymentMethod : String
+  * isRecurring : Boolean
+  frequency : String
+  nextRunDate : DateTime
+  parentRecurringId : String
+  --
+  * userId : String [FK]
+  * categoryId : String [FK]
+}
+
+entity "SavingGoal" as SavingGoal {
+  * id : String [PK]
+  --
+  * title : String
+  * targetAmount : Float
+  * savedAmount : Float
+  * deadline : DateTime
+  --
+  * userId : String [FK]
+}
+
+' Relaciones
+FamilyGroup ||--o{ User
+User ||--o{ Transaction
+User ||--o{ SavingGoal
+User ||--o{ Category
+Category ||--o{ Budget
+Category ||--o{ Transaction
+
+@enduml

@@ -109,11 +109,13 @@ budgetRouter.put('/:id', async (req, resp) => {
         categoryId
       }
     });
-    const alerta = await checkBudgetAlert(categoryId, month);
+    const alerta = await checkBudgetAlert({ categoryId, date: new Date() });
     resp.json({
       msg: "Presupuesto actualizado",
-      data: budget,
-      alerta
+      data: {
+        budget,
+        alerta
+      }
     });
   } catch (error) {
     resp.status(400).json({
@@ -123,41 +125,56 @@ budgetRouter.put('/:id', async (req, resp) => {
   }
 });
 
-async function checkBudgetAlert(categoryId, month) {
+export async function checkBudgetAlert({ categoryId, date }) {
+  const monthString = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+  
   const budget = await prisma.budget.findFirst({
     where: {
       categoryId,
-      month
+      month: monthString
     }
   });
+  
   if (!budget) {
     return {
       alertTrigger: false
     };
   }
+
+  const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+  const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+
   const gastos = await prisma.transaction.aggregate({
     where: {
       categoryId,
-      type: "EGRESO"
+      type: "EGRESO",
+      date: {
+        gte: startOfMonth,
+        lt: endOfMonth
+      }
     },
     _sum: {
       amount: true
     }
   });
+  
   const totalGastado = gastos._sum.amount || 0;
   const porcentaje = (totalGastado / budget.limitAmount) * 100;
+  
   if (porcentaje >= 100) {
     return {
       alertTrigger: true,
       mensaje: "Presupuesto agotado"
     };
   }
+  
   if (porcentaje >= 80) {
     return {
       alertTrigger: true,
       mensaje: "Ya alcanzó el 80% del presupuesto"
     };
   }
+  
   return {
     alertTrigger: false
   };

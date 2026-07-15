@@ -19,6 +19,7 @@ import { prisma } from '../../index.js';
 import { verifyJWT } from '../middlewares/auth.middleware.js';
 import { convertToBaseCurrency } from '../services/currencyConversion.service.js';
 import { extractReceiptData } from '../services/receiptExtraction.service.js';
+import { checkBudgetAlert } from './budget.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const router = Router();
@@ -42,40 +43,6 @@ const upload = multer({
 
 // Every route in this file requires a valid JWT.
 router.use(verifyJWT);
-
-// ------------------------------------------------------------------
-// Budget-alert check (RF-11/RF-12 support).
-// Integrante 3 owns the real budget logic in budget.routes.js, but their
-// checkBudgetAlert() isn't exported yet and isn't scoped by month there
-// either — so this stays local for now, using the SAME response shape
-// ({ alertTrigger, mensaje }) they use, so the frontend only has to
-// handle one format. Swap this out once their function is exported.
-// ------------------------------------------------------------------
-async function checkBudgetAlert({ categoryId, date }) {
-  const month = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-
-  const budget = await prisma.budget.findFirst({ where: { categoryId, month } });
-  if (!budget) return { alertTrigger: false };
-
-  const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-  const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 1);
-
-  const spentAgg = await prisma.transaction.aggregate({
-    where: {
-      categoryId,
-      type: 'EGRESO',
-      date: { gte: startOfMonth, lt: endOfMonth },
-    },
-    _sum: { amount: true },
-  });
-
-  const spent = spentAgg._sum.amount || 0;
-  const percentage = (spent / budget.limitAmount) * 100;
-
-  if (percentage >= 100) return { alertTrigger: true, mensaje: 'Presupuesto agotado' };
-  if (percentage >= 80) return { alertTrigger: true, mensaje: 'Ya alcanzó el 80% del presupuesto' };
-  return { alertTrigger: false };
-}
 
 // ------------------------------------------------------------------
 // GET /api/transactions

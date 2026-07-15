@@ -24,12 +24,14 @@ familyRouter.post('/', async (req, resp) => {
     });
     if (!user) {
       return resp.status(404).json({
-        msg: "Usuario no encontrado"
+        msg: "Usuario no encontrado",
+        data: null
       });
     }
     if (user.familyId) {
       return resp.status(400).json({
-        msg: "Ya pertenece a un grupo"
+        msg: "Ya pertenece a un grupo",
+        data: null
       });
     }
 
@@ -53,7 +55,8 @@ familyRouter.post('/', async (req, resp) => {
     });
   } catch (error) {
     resp.status(400).json({
-      msg: error.message
+      msg: "Error al crear el grupo familiar",
+      data: error.message
     });
   }
 });
@@ -77,10 +80,14 @@ familyRouter.get('/members', async (req, resp) => {
         role: true
       }
     });
-    resp.json(members);
+    resp.json({
+      msg: "Miembros del grupo familiar obtenidos",
+      data: members
+    });
   } catch (error) {
     resp.status(400).json({
-      msg: error.message
+      msg: "Error al obtener los miembros",
+      data: error.message
     });
   }
 });
@@ -92,9 +99,10 @@ familyRouter.get('/analytics', async (req, resp) => {
         id: req.user.id
       }
     });
-    if (user.role != "JEFE") {
+    if (user.role !== "JEFE") {
       return resp.status(403).json({
-        msg: "Solo el jefe puede acceder"
+        msg: "Solo el jefe puede acceder",
+        data: null
       });
     }
 
@@ -109,10 +117,14 @@ familyRouter.get('/analytics', async (req, resp) => {
         amount: true
       }
     });
-    resp.json(analytics);
+    resp.json({
+      msg: "Analíticas familiares obtenidas",
+      data: analytics
+    });
   } catch (error) {
     resp.status(400).json({
-      msg: error.message
+      msg: "Error al obtener las analíticas del grupo familiar",
+      data: error.message
     });
   }
 });
@@ -153,13 +165,17 @@ dashboardRouter.get('/personal', async (req, resp) => {
       }
     });
     resp.json({
-      income: ingresos._sum.amount || 0,
-      expense: egresos._sum.amount || 0,
-      categories: gastos
+      msg: "Dashboard personal obtenido",
+      data: {
+        income: ingresos._sum.amount || 0,
+        expense: egresos._sum.amount || 0,
+        categories: gastos
+      }
     });
   } catch (error) {
     resp.status(400).json({
-      msg: error.message
+      msg: "Error al obtener el dashboard personal",
+      data: error.message
     });
   }
 });

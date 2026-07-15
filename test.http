@@ -1,0 +1,59 @@
+### Variables globales
+@baseUrl = http://localhost:5000
+@password = PasswordSecure123!
+
+### Prueba 1: Health Check
+# @name healthCheck
+GET {{baseUrl}}/api/health HTTP/1.1
+
+###
+
+### Prueba 2: Registro Exitoso de Usuario (POST /api/auth/register)
+# Se utiliza la variable dinámica {{$randomInt}} para asegurar un correo único en cada ejecución
+# @name register
+POST {{baseUrl}}/api/auth/register HTTP/1.1
+Content-Type: application/json
+
+{
+  "name": "Usuario QA Test",
+  "email": "qa.tester.{{$randomInt 1000 9999}}@famibalance.com",
+  "password": "{{password}}"
+}
+
+###
+
+### Prueba 3: Login Exitoso (POST /api/auth/login)
+# Se extrae dinámicamente el correo electrónico retornado en la respuesta de la Prueba 2 (registro)
+# @name login
+POST {{baseUrl}}/api/auth/login HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "{{register.response.body.data.email}}",
+  "password": "{{password}}"
+}
+
+###
+
+### Prueba 4: Login Fallido por Contraseña Incorrecta (POST /api/auth/login)
+# Se envía la contraseña incorrecta "WrongPassword" para validar el control de excepciones y el status 400
+# @name loginFailed
+POST {{baseUrl}}/api/auth/login HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "{{register.response.body.data.email}}",
+  "password": "WrongPassword"
+}
+
+###
+
+### Prueba 5: Flujo Inicial de Recuperación (POST /api/auth/recover)
+# Se envía el correo electrónico del usuario registrado para iniciar el proceso de recuperación de contraseña
+# @name recoverPassword
+POST {{baseUrl}}/api/auth/recover HTTP/1.1
+Content-Type: application/json
+
+{
+  "email": "{{register.response.body.data.email}}"
+}
